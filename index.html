@@ -200,8 +200,9 @@ a{color:inherit;}
 .icon-btn:hover, .icon-btn:focus-visible{ background:rgba(255,255,255,.06); }
 .icon-btn:active{ background:rgba(255,255,255,.1); }
 @keyframes iconIn{to{opacity:1;transform:translateY(0);}}
-.folder-shape{ position:relative;width:54px;height:42px; transition:transform .2s ease; }
-.icon-btn:hover .folder-shape{ transform:translateY(-3px); }
+.folder-shape, .desktop-icon-img{ position:relative;width:54px;height:42px; transition:transform .2s ease; }
+.desktop-icon-img{ object-fit:cover; border-radius:8px; }
+.icon-btn:hover .folder-shape, .icon-btn:hover .desktop-icon-img{ transform:translateY(-3px); }
 .folder-shape::before{
   content:'';position:absolute;top:0;left:3px;width:24px;height:9px;
   background:var(--c);border-radius:4px 4px 0 0;opacity:.95;
@@ -640,8 +641,9 @@ const ICONS = [
   { id:"experience",     label:"Experience",     glyph:"XP",  color:"var(--sky)" },
   { id:"skills",         label:"My Skills",      glyph:"<>",  color:"var(--lavender)" },
   { id:"projects",       label:"My Projects",    glyph:"▣",   color:"var(--sky)" },
+  { id:"cp",             label:"Comp Programming", glyph:"CP", color:"var(--amber)" },
   { id:"certifications", label:"Certificates",   glyph:"CR",  color:"var(--amber)" },
-  { id:"contact",        label:"Contact Me",     glyph:"@",   color:"var(--coral)" }
+  { id:"contact",        label:"Contact Me",     glyph:"@",   color:"var(--coral)", img:"contact-icon.png" }
 ];
 
 /* ============================================================
@@ -743,11 +745,18 @@ function buildIcons(){
     btn.className = "icon-btn";
     btn.style.animationDelay = (i * 0.08) + "s";
     btn.setAttribute("aria-label", "Open " + ic.label);
-    btn.innerHTML =
-      '<span class="folder-shape" style="--c:' + ic.color + '">' +
-        '<span class="folder-glyph">' + ic.glyph + '</span>' +
-      '</span>' +
-      '<span class="icon-label">' + ic.label + '</span>';
+    
+    let iconContent = '';
+    if (ic.img) {
+      iconContent = '<img src="' + ic.img + '" alt="" class="desktop-icon-img" />';
+    } else {
+      iconContent =
+        '<span class="folder-shape" style="--c:' + ic.color + '">' +
+          '<span class="folder-glyph">' + ic.glyph + '</span>' +
+        '</span>';
+    }
+
+    btn.innerHTML = iconContent + '<span class="icon-label">' + ic.label + '</span>';
     btn.addEventListener("click", () => { try{ sfx.click(); }catch(e){} openWindow(ic.id); });
     wrap.appendChild(btn);
   });
@@ -766,6 +775,7 @@ const WINDOW_DEFS = {
   experience:     { title:"Experience",     glyph:"XP", color:"var(--sky)",      w:720, h:480, render:renderExperience },
   skills:         { title:"My Skills",      glyph:"<>", color:"var(--lavender)", w:680, h:480, render:renderSkills },
   projects:       { title:"My Projects",    glyph:"▣",  color:"var(--sky)",      w:760, h:520, render:renderProjects },
+  cp:             { title:"Comp Programming", glyph:"CP", color:"var(--amber)",  w:440, h:280, render:renderCP },
   certifications: { title:"Certifications", glyph:"CR", color:"var(--amber)",    w:640, h:380, render:renderCertifications },
   contact:        { title:"Contact Me",     glyph:"@",  color:"var(--coral)",    w:680, h:460, render:renderContact }
 };
@@ -966,6 +976,17 @@ function renderEducation(){
   );
 }
 
+function renderCP(){
+  return (
+    '<div class="win-section" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:10px 0;">' +
+      '<div style="width:100px;height:100px;border-radius:16px;background:rgba(255,255,255,0.03);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;transition:transform .2s ease;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+        '<img src="leetcode-logo.png" alt="LeetCode" style="max-width:80%;max-height:80%;object-fit:contain;" />' +
+      '</div>' +
+      '<a href="https://leetcode.com/u/vedvishwakarma/" target="_blank" rel="noopener" class="project-link demo" style="width:180px;text-align:center;padding:10px 0;font-weight:700;text-decoration:none;">LeetCode Profile</a>' +
+    '</div>'
+  );
+}
+
 function renderExperience(){
   return (
     '<div class="win-section">' +
@@ -1083,9 +1104,9 @@ function renderContact(){
         '<div class="contact-email" style="margin-top:4px;">' + CONFIG.phone + '</div></div>' +
         '<div><h4 style="margin:0 0 8px;color:var(--coral);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;">Elsewhere</h4>' +
         '<div class="social-row">' +
-          '<a class="social-btn" href="' + CONFIG.socials.linkedin + '" target="_blank" rel="noopener" aria-label="LinkedIn">in</a>' +
-          '<a class="social-btn" href="' + CONFIG.socials.github + '" target="_blank" rel="noopener" aria-label="GitHub">gh</a>' +
-          '<a class="social-btn" href="mailto:' + CONFIG.email + '" aria-label="Email">@</a>' +
+          '<a class="social-btn" href="' + CONFIG.socials.linkedin + '" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="linkedin-icon.png" alt="LinkedIn" style="width:100%;height:100%;object-fit:cover;border-radius:9px;" /></a>' +
+          '<a class="social-btn" href="' + CONFIG.socials.github + '" target="_blank" rel="noopener" aria-label="GitHub"><img src="github-icon.png" alt="GitHub" style="width:100%;height:100%;object-fit:cover;border-radius:9px;" /></a>' +
+          '<a class="social-btn" href="mailto:' + CONFIG.email + '" aria-label="Email"><img src="gmail-icon.png" alt="Gmail" style="width:100%;height:100%;object-fit:cover;border-radius:9px;" /></a>' +
         '</div></div>' +
       '</div>' +
     '</div></div>'
@@ -1094,16 +1115,45 @@ function renderContact(){
 function wireContactForm(windowEl){
   const form = windowEl.querySelector("[data-contact-form]");
   if (!form) return;
+  const submitBtn = form.querySelector(".submit-btn");
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    // NOTE: This is a front-end demo form. Wire it up to a real service
-    // (e.g. Formspree, EmailJS, or your own backend) to actually receive messages.
-    const wrap = form.parentElement;
-    form.style.display = "none";
-    const success = document.createElement("div");
-    success.className = "success-panel";
-    success.innerHTML = '<div class="success-check">✓</div><h5 style="margin:0;">Message sent!</h5><p style="color:var(--text-dim);font-size:.82rem;margin:0;">Thanks for reaching out — I\'ll get back to you soon.</p>';
-    wrap.insertBefore(success, form);
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.textContent = "Sending...";
+    submitBtn.disabled = true;
+
+    const nameVal = form.querySelector("#cf-name").value;
+    const emailVal = form.querySelector("#cf-email").value;
+    const msgVal = form.querySelector("#cf-msg").value;
+
+    fetch("https://formsubmit.co/ajax/" + CONFIG.email, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        name: nameVal,
+        email: emailVal,
+        message: msgVal
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      const wrap = form.parentElement;
+      form.style.display = "none";
+      const success = document.createElement("div");
+      success.className = "success-panel";
+      success.innerHTML = '<div class="success-check">✓</div><h5 style="margin:0;">Message sent!</h5><p style="color:var(--text-dim);font-size:.82rem;margin:0;">Thanks for reaching out — I\'ll get back to you soon.</p>';
+      wrap.insertBefore(success, form);
+    })
+    .catch(err => {
+      console.error(err);
+      submitBtn.textContent = originalBtnText;
+      submitBtn.disabled = false;
+      alert("Oops! Something went wrong. Please try again or email me directly at " + CONFIG.email);
+    });
   });
 }
 
@@ -1180,6 +1230,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 function doShutdown(){
+  localStorage.setItem("portfolio_shutdown", "true");
   try{ sfx.shutdown(); }catch(e){}
   const desktop = document.getElementById("desktop");
   desktop.classList.add("shutting-down");
@@ -1192,13 +1243,20 @@ function doShutdown(){
 }
 
 document.getElementById("restart-btn").addEventListener("click", () => {
+  localStorage.removeItem("portfolio_shutdown");
   window.location.reload();
 });
 
 /* ============================================================
    BOOT
    ============================================================ */
-runBootSequence();
+if (localStorage.getItem("portfolio_shutdown") === "true") {
+  document.getElementById("boot-screen").style.display = "none";
+  document.getElementById("desktop").style.display = "none";
+  document.getElementById("thankyou-screen").classList.add("show");
+} else {
+  runBootSequence();
+}
 </script>
 </body>
 </html>
