@@ -1127,13 +1127,15 @@ function wireContactForm(windowEl){
     const emailVal = form.querySelector("#cf-email").value;
     const msgVal = form.querySelector("#cf-msg").value;
 
-    fetch("https://formsubmit.co/ajax/" + CONFIG.email, {
+    fetch("https://formsubmit.co/ajax/aa5fa2ffec7929c41222b00fd31b3b72", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
       body: JSON.stringify({
+        _subject: "New Message from Portfolio: " + nameVal,
+        _template: "table",
         name: nameVal,
         email: emailVal,
         message: msgVal
