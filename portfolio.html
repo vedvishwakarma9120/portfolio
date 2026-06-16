@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Ved — Portfolio OS</title>
+<meta name="description" content="An interactive operating-system-style portfolio." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root{
+  --void:#14131f;
+  --surface:#1d1b2a;
+  --surface-2:#252336;
+  --line:rgba(255,255,255,.09);
+  --text:#f1eee6;
+  --text-dim:#a8a3bd;
+  --amber:#f2a65a;
+  --amber-dim:rgba(242,166,90,.18);
+  --lavender:#9d8df1;
+  --mint:#6fcf97;
+  --sky:#5fb0e0;
+  --coral:#e8866a;
+  --danger:#e2604f;
+  --taskbar-h:58px;
+  --radius:16px;
+  --font-display:'Space Mono', 'Courier New', monospace;
+  --font-body:'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --shadow-window: 0 24px 60px -12px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.03) inset;
+}
+html[data-theme="light"]{
+  --void:#e9eaf2;
+  --surface:#fbfbfd;
+  --surface-2:#f1f1f8;
+  --line:rgba(20,19,31,.1);
+  --text:#1b1a26;
+  --text-dim:#5e5c70;
+  --shadow-window: 0 24px 50px -14px rgba(30,28,48,.25), 0 2px 0 rgba(255,255,255,.6) inset;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
+body{
+  font-family:var(--font-body);
+  color:var(--text);
+  background:var(--void);
+  -webkit-font-smoothing:antialiased;
+  position:fixed;
+  inset:0;
+}
+button{font-family:inherit;cursor:pointer;}
+a{color:inherit;}
+::selection{background:var(--amber-dim);}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:4px;}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+  }
+}
+
+.hidden{display:none !important;}
+
+/* ============================================================
+   BOOT SCREEN
+   ============================================================ */
+#boot-screen{
+  position:fixed;inset:0;z-index:3000;
+  background:radial-gradient(circle at 50% 30%, #1c1a2c 0%, #100f19 70%);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;
+  color:#f1eee6;
+  transition:opacity .6s ease, transform .6s ease;
+}
+#boot-screen.fade-out{opacity:0;transform:scale(1.03);pointer-events:none;}
+.boot-logo{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:clamp(2.2rem,7vw,3.6rem);
+  letter-spacing:.04em;
+  display:flex;align-items:baseline;gap:.5rem;
+}
+.boot-logo .blip{
+  width:.5em;height:.5em;border-radius:50%;
+  background:var(--amber);
+  box-shadow:0 0 22px 4px var(--amber);
+  animation:blink 1.1s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+.boot-sub{
+  font-family:var(--font-display);
+  color:var(--text-dim);
+  font-size:.78rem;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-top:.6rem;
+}
+.boot-log{
+  margin-top:2.6rem;
+  width:min(420px,80vw);
+  font-family:var(--font-display);
+  font-size:.72rem;
+  color:#6f6a87;
+  height:108px;
+  overflow:hidden;
+  display:flex;flex-direction:column;gap:4px;
+}
+.boot-log div{opacity:0;transform:translateY(4px);animation:logIn .35s ease forwards;}
+.boot-log .ok{color:var(--mint);margin-right:.5em;}
+.boot-bar-track{
+  width:min(420px,80vw);
+  height:4px;border-radius:4px;
+  background:rgba(255,255,255,.08);
+  margin-top:1.4rem;overflow:hidden;
+}
+.boot-bar-fill{
+  height:100%;width:0%;border-radius:4px;
+  background:linear-gradient(90deg,var(--lavender),var(--amber));
+  transition:width .25s ease;
+}
+.boot-pct{
+  font-family:var(--font-display);
+  font-size:.72rem;color:var(--text-dim);margin-top:.6rem;letter-spacing:.08em;
+}
+@keyframes logIn{to{opacity:1;transform:translateY(0);}}
+
+/* ============================================================
+   DESKTOP
+   ============================================================ */
+#desktop{
+  position:fixed;inset:0;
+  opacity:0;
+  transition:opacity .7s ease;
+}
+#desktop.visible{opacity:1;}
+
+#wallpaper{position:fixed;inset:0;z-index:0;transition:background 1s ease;}
+.wp-blueprint{
+  background:
+    radial-gradient(circle at 18% 20%, rgba(242,166,90,.16), transparent 38%),
+    radial-gradient(circle at 82% 78%, rgba(157,141,241,.18), transparent 40%),
+    linear-gradient(var(--void),var(--void));
+  background-color:var(--void);
+}
+.wp-blueprint::after{
+  content:'';position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size:42px 42px;
+}
+.wp-aurora{
+  background:
+    radial-gradient(circle at 20% 15%, rgba(157,141,241,.35), transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(95,176,224,.3), transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(242,166,90,.28), transparent 50%),
+    var(--void);
+}
+.wp-void{ background:var(--void); }
+.wp-void::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.05), transparent 60%);
+}
+.wp-matrix{ background:var(--void); }
+.wp-matrix::after{
+  content:'';position:absolute;inset:0;opacity:.5;
+  background-image:repeating-linear-gradient(0deg, rgba(242,166,90,.05) 0px, rgba(242,166,90,.05) 1px, transparent 1px, transparent 26px);
+}
+#wallpaper::before{ /* scanline texture, always on, very subtle */
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0px, transparent 1px, transparent 3px);
+  opacity:.18;
+  mix-blend-mode:overlay;
+}
+
+/* ----- Desktop icons ----- */
+#icons{
+  position:absolute;top:22px;left:18px;right:18px;bottom:calc(var(--taskbar-h) + 16px);
+  z-index:2;
+  display:grid;
+  grid-template-columns:88px;
+  grid-auto-rows:96px;
+  gap:6px 0;
+  align-content:start;
+}
+.icon-btn{
+  background:none;border:none;color:var(--text);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:8px 4px;border-radius:10px;
+  width:88px;
+  opacity:0;transform:translateY(8px);
+  animation:iconIn .45s ease forwards;
+  transition:background .15s ease;
+}
+.icon-btn:hover, .icon-btn:focus-visible{ background:rgba(255,255,255,.06); }
+.icon-btn:active{ background:rgba(255,255,255,.1); }
+@keyframes iconIn{to{opacity:1;transform:translateY(0);}}
+.folder-shape{ position:relative;width:54px;height:42px; transition:transform .2s ease; }
+.icon-btn:hover .folder-shape{ transform:translateY(-3px); }
+.folder-shape::before{
+  content:'';position:absolute;top:0;left:3px;width:24px;height:9px;
+  background:var(--c);border-radius:4px 4px 0 0;opacity:.95;
+}
+.folder-shape::after{
+  content:'';position:absolute;top:7px;left:0;width:54px;height:35px;
+  background:linear-gradient(155deg, var(--c) 0%, transparent 130%);
+  opacity:.28;
+  border:1.5px solid var(--c);border-radius:6px;
+}
+.folder-glyph{
+  position:absolute;inset:7px 0 0 0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-weight:700;font-size:.82rem;color:var(--c);
+  pointer-events:none;
+}
+.icon-label{
+  font-size:.74rem;text-align:center;line-height:1.2;
+  text-shadow:0 1px 3px rgba(0,0,0,.5);
+}
+
+/* ============================================================
+   WINDOWS
+   ============================================================ */
+#windows-layer{ position:absolute;top:0;left:0;right:0;bottom:var(--taskbar-h); z-index:10; pointer-events:none; }
+.window{
+  position:absolute;
+  display:flex;flex-direction:column;
+  background:color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter:blur(22px) saturate(140%);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-window);
+  overflow:hidden;
+  min-width:280px;min-height:200px;
+  opacity:1;
+  transition:box-shadow .2s ease, border-color .2s ease;
+  pointer-events:auto;
+}
+.window.opening{ animation:winOpen .28s cubic-bezier(.2,.9,.3,1.2) forwards; }
+@keyframes winOpen{
+  0% { opacity: 0; transform: scale(.92) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.window.closing{ animation:winClose .18s ease forwards; }
+@keyframes winClose{ to{opacity:0;transform:scale(.92) translateY(8px);} }
+.window.minimized{ display:none; }
+.window.active{ border-color:rgba(242,166,90,.35); box-shadow:var(--shadow-window), 0 0 0 1px rgba(242,166,90,.18); }
+.window.maximized{
+  position:fixed !important; top:0 !important; left:0 !important;
+  width:100vw !important; height:calc(100vh - var(--taskbar-h)) !important;
+  border-radius:0;
+}
+
+.win-titlebar{
+  flex:0 0 auto;display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.02);
+  cursor:grab;user-select:none;touch-action:none;
+}
+.win-titlebar:active{cursor:grabbing;}
+.win-icon-chip{
+  width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:.74rem;font-family:var(--font-display);font-weight:700;flex:0 0 auto;
+}
+.win-title{ font-size:.84rem;font-weight:600;flex:1 1 auto;letter-spacing:.01em; }
+.win-controls{ display:flex;gap:6px;flex:0 0 auto; }
+.win-btn{
+  width:26px;height:26px;border-radius:7px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--text-dim);
+  display:flex;align-items:center;justify-content:center;font-size:.78rem;line-height:1;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.win-btn:hover{ background:rgba(255,255,255,.08); color:var(--text); }
+.win-btn.close-btn:hover{ background:rgba(226,96,79,.18); color:var(--danger); border-color:rgba(226,96,79,.4); }
+
+.win-body{ flex:1 1 auto;overflow-y:auto;padding:22px 24px 28px; scrollbar-width:thin; }
+.win-body::-webkit-scrollbar{width:8px;}
+.win-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px;}
+
+/* ----- shared content styles ----- */
+.win-section h3{ font-size:1.15rem;margin:0 0 8px; font-weight:700; }
+.win-section h4{ font-size:.84rem;margin:20px 0 6px;color:var(--amber);text-transform:uppercase;letter-spacing:.07em; }
+.win-section p{ font-size:.92rem;line-height:1.65;color:var(--text-dim);margin:0 0 8px; }
+
+/* About */
+.about-grid{ display:flex;gap:28px;flex-wrap:wrap; }
+.avatar-wrap{ flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:10px;width:140px; }
+.avatar-ring{ width:120px;height:120px;border-radius:50%;padding:4px;
+  background:conic-gradient(from 0deg, var(--amber), var(--lavender), var(--sky), var(--amber)); }
+.avatar{ width:100%;height:100%;border-radius:50%;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-display);
+  font-size:2.2rem;font-weight:700;color:var(--text); }
+.avatar-caption{ font-size:.78rem;color:var(--text-dim);text-align:center; }
+.about-text{ flex:1 1 280px;min-width:0; }
+.wave{ display:inline-block;animation:wave 2.4s ease-in-out infinite; }
+@keyframes wave{0%,100%{transform:rotate(0);}15%{transform:rotate(16deg);}30%{transform:rotate(-8deg);}45%{transform:rotate(16deg);}60%{transform:rotate(0);}}
+
+/* Skills */
+.skill-cats{ display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px; }
+.skill-cat-title{ display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:700;margin-bottom:14px; }
+.skill-cat-dot{ width:8px;height:8px;border-radius:50%; }
+.skill-row{ margin-bottom:14px; }
+.skill-row-top{ display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px; }
+.skill-row-top span:last-child{ color:var(--text-dim);font-family:var(--font-display);font-size:.74rem; }
+.skill-bar-track{ height:7px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden; }
+.skill-bar-fill{ height:100%;border-radius:5px;width:0%;transition:width 1s cubic-bezier(.2,.7,.2,1); }
+
+/* Hobbies */
+.hobby-grid{ display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px; }
+.hobby-card{
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;
+  padding:18px 14px;text-align:center;transition:transform .22s ease,border-color .22s ease,background .22s ease;
+}
+.hobby-card:hover{ transform:translateY(-5px) scale(1.02);border-color:rgba(242,166,90,.35);background:rgba(255,255,255,.05); }
+.hobby-icon{ font-size:1.8rem;margin-bottom:8px;display:block; }
+.hobby-card h5{ font-size:.86rem;margin:0 0 4px; }
+.hobby-card p{ font-size:.76rem;color:var(--text-dim);margin:0;line-height:1.5; }
+
+/* Projects */
+.project-grid{ display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px; }
+.project-card{
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:rgba(255,255,255,.025);
+  display:flex;flex-direction:column;
+  transition:transform .2s ease, border-color .2s ease;
+}
+.project-card:hover{ transform:translateY(-4px); border-color:rgba(157,141,241,.4); }
+.project-thumb{
+  height:120px;display:flex;align-items:center;justify-content:center;font-size:2.4rem;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 10px, transparent 10px 20px),
+    linear-gradient(135deg, var(--p1), var(--p2));
+}
+.project-info{ padding:16px;display:flex;flex-direction:column;gap:8px;flex:1; }
+.project-info h5{ margin:0;font-size:.96rem; }
+.project-info p{ margin:0;font-size:.8rem;color:var(--text-dim);line-height:1.55;flex:1; }
+.tech-tags{ display:flex;flex-wrap:wrap;gap:6px; }
+.tech-tag{ font-size:.66rem;font-family:var(--font-display);padding:3px 8px;border-radius:6px;
+  background:rgba(255,255,255,.06);color:var(--text-dim);border:1px solid var(--line); }
+.project-links{ display:flex;gap:8px;margin-top:4px; }
+.project-link{
+  flex:1;text-align:center;font-size:.76rem;padding:8px 0;border-radius:8px;
+  border:1px solid var(--line);text-decoration:none;color:var(--text);
+  transition:background .15s ease,border-color .15s ease;
+}
+.project-link:hover{ background:rgba(255,255,255,.07);border-color:rgba(242,166,90,.4); }
+.project-link.demo{ background:var(--amber-dim);border-color:rgba(242,166,90,.35); }
+
+/* Contact */
+.contact-wrap{ display:flex;gap:30px;flex-wrap:wrap; }
+.contact-form{ flex:1 1 280px;display:flex;flex-direction:column;gap:12px;min-width:0; }
+.field{ display:flex;flex-direction:column;gap:5px; }
+.field label{ font-size:.76rem;color:var(--text-dim); }
+.field input, .field textarea{
+  background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:9px;
+  padding:10px 12px;color:var(--text);font-family:inherit;font-size:.88rem;resize:vertical;
+}
+.field input:focus, .field textarea:focus{ border-color:var(--amber); }
+.submit-btn{
+  margin-top:4px;padding:11px;border-radius:9px;border:none;
+  background:linear-gradient(90deg,var(--amber),var(--coral));color:#1a1320;font-weight:700;font-size:.88rem;
+  transition:transform .15s ease, opacity .15s ease;
+}
+.submit-btn:hover{ transform:translateY(-1px); }
+.submit-btn:active{ transform:translateY(0); }
+.success-panel{ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:36px 10px;text-align:center; }
+.success-check{
+  width:54px;height:54px;border-radius:50%;background:rgba(111,207,151,.14);
+  display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:var(--mint);
+  animation:popIn .35s cubic-bezier(.2,.9,.3,1.3);
+}
+@keyframes popIn{0%{transform:scale(.4);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.contact-side{ flex:0 0 auto;display:flex;flex-direction:column;gap:14px;min-width:160px; }
+.social-row{ display:flex;gap:10px; }
+.social-btn{
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;color:var(--text);
+  background:rgba(255,255,255,.03);transition:background .15s ease, transform .15s ease;
+  text-decoration:none;
+}
+.social-btn:hover{ background:rgba(255,255,255,.08); transform:translateY(-2px); }
+.contact-email{ font-family:var(--font-display);font-size:.8rem;color:var(--text-dim);word-break:break-all; }
+
+/* ============================================================
+   TASKBAR
+   ============================================================ */
+#taskbar{
+  position:fixed;left:0;right:0;bottom:0;height:var(--taskbar-h);z-index:500;
+  display:flex;align-items:center;gap:10px;padding:0 12px;
+  background:color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter:blur(18px) saturate(140%);
+  border-top:1px solid var(--line);
+}
+.power-btn{
+  width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--coral);
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex:0 0 auto;
+  transition:background .15s ease, box-shadow .15s ease;
+}
+.power-btn:hover{ background:rgba(226,96,79,.16); box-shadow:0 0 0 4px rgba(226,96,79,.1); }
+.taskbar-divider{ width:1px;height:26px;background:var(--line);flex:0 0 auto; }
+#tray{ flex:1 1 auto;display:flex;gap:6px;overflow-x:auto;min-width:0;scrollbar-width:none; }
+#tray::-webkit-scrollbar{display:none;}
+.tray-item{
+  display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9px;
+  background:rgba(255,255,255,.03);border:1px solid transparent;color:var(--text-dim);
+  font-size:.78rem;white-space:nowrap;flex:0 0 auto;max-width:160px;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.tray-item span.label{overflow:hidden;text-overflow:ellipsis;}
+.tray-item.active{ background:rgba(242,166,90,.14);border-color:rgba(242,166,90,.3);color:var(--text); }
+.tray-item:hover{ background:rgba(255,255,255,.08); }
+.tray-close{
+  margin-left: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .75rem;
+  color: var(--text-dim);
+  transition: background .15s ease, color .15s ease;
+}
+.tray-close:hover{
+  background: rgba(226,96,79,.2);
+  color: var(--danger);
+}
+.taskbar-right{ display:flex;align-items:center;gap:6px;flex:0 0 auto; }
+.tb-icon-btn{
+  width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:none;color:var(--text-dim);
+  display:flex;align-items:center;justify-content:center;font-size:.95rem;
+  transition:background .15s ease,color .15s ease;
+}
+.tb-icon-btn:hover{ background:rgba(255,255,255,.06); color:var(--text); }
+.clock-block{
+  font-family:var(--font-display);text-align:right;line-height:1.15;padding:0 6px;min-width:64px;
+}
+.clock-time{ font-size:.84rem;font-weight:700; }
+.clock-date{ font-size:.6rem;color:var(--text-dim); }
+
+/* Wallpaper picker popover */
+#wallpaper-picker{
+  position:fixed;bottom:calc(var(--taskbar-h) + 10px);right:108px;z-index:520;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:12px;display:flex;gap:10px;box-shadow:var(--shadow-window);
+}
+.wp-swatch{
+  width:46px;height:36px;border-radius:8px;border:2px solid transparent;cursor:pointer;
+  position:relative;overflow:hidden;
+}
+.wp-swatch.selected{ border-color:var(--amber); }
+
+/* ============================================================
+   SHUTDOWN MODAL
+   ============================================================ */
+#shutdown-modal-backdrop{
+  position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+#shutdown-modal-backdrop.show{ opacity:1;pointer-events:auto; }
+.modal-card{
+  width:min(320px,86vw);background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:24px 22px;text-align:center;box-shadow:var(--shadow-window);
+  transform:scale(.92);transition:transform .2s ease;
+}
+#shutdown-modal-backdrop.show .modal-card{ transform:scale(1); }
+.modal-icon{ font-size:1.8rem;margin-bottom:10px; }
+.modal-card h4{ margin:0 0 6px;font-size:1.02rem; }
+.modal-card p{ margin:0 0 18px;font-size:.82rem;color:var(--text-dim); }
+.modal-actions{ display:flex;gap:10px; }
+.modal-btn{ flex:1;padding:10px 0;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:.84rem;font-weight:600;color:var(--text); }
+.modal-btn:hover{ background:rgba(255,255,255,.08); }
+.modal-btn.danger{ background:linear-gradient(90deg,var(--danger),var(--coral));border:none;color:#1a1320; }
+
+/* ============================================================
+   SHUTDOWN + THANK YOU
+   ============================================================ */
+#desktop.shutting-down{
+  animation:crtOff .55s ease forwards;
+  transform-origin:center;
+}
+@keyframes crtOff{
+  0%{ filter:brightness(1);transform:scale(1); }
+  60%{ filter:brightness(2.4);transform:scale(1.01); }
+  85%{ filter:brightness(.2);transform:scaleY(.01);opacity:1; }
+  100%{ filter:brightness(0);transform:scaleY(.01);opacity:0; }
+}
+#thankyou-screen{
+  position:fixed;inset:0;z-index:2500;background:#0c0b13;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;
+  padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .7s ease;
+}
+#thankyou-screen.show{ opacity:1;pointer-events:auto; }
+.ty-heart{ font-size:2.4rem;margin-bottom:14px; }
+#thankyou-screen h2{ font-family:var(--font-display);font-size:clamp(1.3rem,5vw,1.9rem);margin:0 0 14px;letter-spacing:.02em; }
+#thankyou-screen p{ color:var(--text-dim);max-width:440px;line-height:1.7;font-size:.92rem;margin:0 0 26px; }
+.restart-btn{
+  padding:13px 26px;border-radius:11px;border:none;font-weight:700;font-size:.9rem;
+  background:linear-gradient(90deg,var(--amber),var(--lavender));color:#161220;
+  display:flex;align-items:center;gap:8px;
+}
+.restart-btn:hover{ transform:translateY(-1px); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:760px){
+  #icons{ grid-template-columns:repeat(auto-fill,76px); justify-content:space-between; }
+  .icon-btn{ width:76px; }
+  .clock-date{ display:none; }
+  .window{
+    width:94vw !important; height:78vh !important;
+    left:3vw !important; top:6vh !important;
+  }
+  .window.opening{ animation:winOpenMobile .26s ease forwards; }
+  @keyframes winOpenMobile{
+    0% { opacity: 0; transform: scale(.95) translateY(10px); }
+    100% { opacity: 1; transform: none; }
+  }
+  #wallpaper-picker{ right:10px; }
+  .about-grid{ flex-direction:column;align-items:center;text-align:center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     BOOT SCREEN
+     ============================================================ -->
+<div id="boot-screen" role="status" aria-live="polite">
+  <div class="boot-logo"><span id="boot-name">VED</span><span class="blip"></span></div>
+  <div class="boot-sub">PERSONAL OPERATING SYSTEM · v1.0</div>
+  <div class="boot-log" id="boot-log"></div>
+  <div class="boot-bar-track"><div class="boot-bar-fill" id="boot-bar"></div></div>
+  <div class="boot-pct" id="boot-pct">0%</div>
+</div>
+
+<!-- ============================================================
+     DESKTOP
+     ============================================================ -->
+<div id="desktop">
+  <div id="wallpaper" class="wp-blueprint"></div>
+
+  <nav id="icons" aria-label="Desktop folders"></nav>
+
+  <div id="windows-layer"></div>
+
+  <footer id="taskbar" role="toolbar" aria-label="Taskbar">
+    <button class="power-btn" id="power-btn" aria-label="Power off">⏻</button>
+    <div class="taskbar-divider"></div>
+    <div id="tray" aria-label="Open windows"></div>
+    <div class="taskbar-right">
+      <button class="tb-icon-btn" id="sound-toggle" aria-label="Toggle sound">🔊</button>
+      <button class="tb-icon-btn" id="wallpaper-btn" aria-label="Change wallpaper">🖼️</button>
+      <button class="tb-icon-btn" id="theme-toggle" aria-label="Toggle theme">🌙</button>
+      <div class="clock-block">
+        <div class="clock-time" id="clock-time">--:--</div>
+        <div class="clock-date" id="clock-date">--- -- ----</div>
+      </div>
+    </div>
+  </footer>
+
+  <div id="wallpaper-picker" class="hidden" role="dialog" aria-label="Wallpaper picker">
+    <button class="wp-swatch wp-blueprint selected" data-wp="wp-blueprint" aria-label="Blueprint wallpaper"></button>
+    <button class="wp-swatch wp-aurora" data-wp="wp-aurora" aria-label="Aurora wallpaper"></button>
+    <button class="wp-swatch wp-matrix" data-wp="wp-matrix" aria-label="Matrix wallpaper"></button>
+    <button class="wp-swatch wp-void" data-wp="wp-void" aria-label="Void wallpaper"></button>
+  </div>
+
+  <div id="shutdown-modal-backdrop">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Shut down confirmation">
+      <div class="modal-icon">⏻</div>
+      <h4>Power off</h4>
+      <p>Do you want to shut down?</p>
+      <div class="modal-actions">
+        <button class="modal-btn" id="cancel-shutdown">Cancel</button>
+        <button class="modal-btn danger" id="confirm-shutdown">Shut down</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     THANK YOU SCREEN
+     ============================================================ -->
+<div id="thankyou-screen">
+  <div class="ty-heart">❤️</div>
+  <h2>Thank You for Visiting My Portfolio</h2>
+  <p>I appreciate your time and interest in exploring my work. Feel free to connect with me for collaborations and opportunities. Have a wonderful day!</p>
+  <button class="restart-btn" id="restart-btn">⟲ Restart Portfolio</button>
+</div>
+
+<script>
+/* ============================================================
+   EDIT YOUR INFO HERE — single source of truth
+   ============================================================ */
+const CONFIG = {
+  name: "Ved",
+  fullName: "Ved Vishwakarma",
+  initials: "VV",
+  role: "Software Engineer & Full Stack Web Developer",
+  email: "vedsharma870748@gmail.com",
+  phone: "+91-9120312730",
+  socials: { linkedin: "https://linkedin.com/in/ved-vishwakarma", github: "https://github.com/vedvishwakarma9120", instagram: "#" },
+  intro: "Passionate Computer Science Engineer and Full Stack Developer with hands-on experience in building real-world web applications using the MERN stack. Proficient in C++, Python, and JavaScript with a strong command of Data Structures & Algorithms. Skilled at designing scalable, user-focused products — from AI-integrated platforms to automation tools. Currently in the final year of B.Tech (CSE), driven by a passion for software engineering, problem-solving, and building impactful products.",
+  story: "My journey is fueled by a passion for software engineering, problem-solving, and building impactful products. As a B.Tech Final Year Student at Kanpur Institute of Technology, I've focused on mastering full-stack web applications, competitive programming, and regular practice of Data Structures & Algorithms in C++ to solve complex challenges.",
+  goals: "I'm dedicated to building scalable, user-focused products. I continuously learn new technologies by building real-world projects, diving deep into documentation, and acquiring industry-recognized certifications."
+};
+
+const SKILLS = {
+  "Programming Languages": { color: "var(--amber)", items: [["C++",90],["Python",82],["JavaScript",88]] },
+  "Web Development":       { color: "var(--lavender)", items: [["React.js",86],["Node.js",80],["Express.js",78],["MongoDB",78],["HTML & CSS",95]] },
+  "Computer Science":      { color: "var(--mint)", items: [["DSA (in C++)",85],["OOP Concepts",88],["System Design",70],["Machine Learning",65]] },
+  "Tools & Technologies":  { color: "var(--sky)", items: [["Git & GitHub",92],["VS Code",95],["Jupyter Notebook",80]] }
+};
+
+const HOBBIES = [
+  { icon:"💻", title:"Tinkering with Tech", desc:"Setting up weird dev environments, breaking my own machine, and fixing it again — for fun." },
+  { icon:"🎮", title:"Gaming", desc:"Strategy games and the occasional late-night ranked match to unwind." },
+  { icon:"🎵", title:"Music", desc:"Always coding with something playing in the background, depending on the bug." },
+  { icon:"📚", title:"Reading", desc:"Tech blogs, sci-fi, and the odd book that has nothing to do with computers." },
+  { icon:"📷", title:"Photography", desc:"Capturing little everyday moments that are easy to scroll past." },
+  { icon:"✈️", title:"Exploring", desc:"New places, new street food, new perspective — even the next town over." }
+];
+
+const PROJECTS = [
+  { name:"ZuxterX", image:"zuxter-x.jpg", desc:"A sleek web platform built to showcase cutting-edge design and premium interactivity.", tech:["React","Tailwind CSS","Vite"], github:"https://github.com/vedvishwakarma9120/ZuxterX.git", demo:"https://zuxter-x.vercel.app/" }
+];
+
+const ICONS = [
+  { id:"about",          label:"About Me",       glyph:"AB",  color:"var(--amber)" },
+  { id:"education",      label:"Education",      glyph:"ED",  color:"var(--mint)" },
+  { id:"experience",     label:"Experience",     glyph:"XP",  color:"var(--sky)" },
+  { id:"skills",         label:"My Skills",      glyph:"<>",  color:"var(--lavender)" },
+  { id:"projects",       label:"My Projects",    glyph:"▣",   color:"var(--sky)" },
+  { id:"certifications", label:"Certificates",   glyph:"CR",  color:"var(--amber)" },
+  { id:"contact",        label:"Contact Me",     glyph:"@",   color:"var(--coral)" }
+];
+
+/* ============================================================
+   AUDIO (synthesized — no external files)
+   ============================================================ */
+let audioCtx = null;
+let soundOn = true;
+function ensureAudio(){
+  if (!soundOn) return null;
+  try{
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }catch(e){ return null; }
+}
+function tone(freq, dur, type, vol, delay){
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + (delay || 0);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(vol || 0.04, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  boot:     () => { tone(440,.15,"sine",.05,0); tone(660,.15,"sine",.05,.12); tone(880,.25,"sine",.06,.24); },
+  open:     () => { tone(700,.08,"triangle",.05,0); tone(1000,.06,"triangle",.04,.05); },
+  close:    () => { tone(500,.08,"triangle",.04,0); tone(280,.1,"triangle",.04,.06); },
+  click:    () => { tone(900,.04,"square",.025,0); },
+  shutdown: () => { tone(600,.2,"sawtooth",.05,0); tone(300,.25,"sawtooth",.05,.15); tone(120,.4,"sawtooth",.06,.35); }
+};
+
+/* ============================================================
+   BOOT SEQUENCE
+   ============================================================ */
+const BOOT_LINES = [
+  "[ OK ] Initializing kernel modules",
+  "[ OK ] Mounting /dev/creativity",
+  "[ OK ] Loading skills.dll",
+  "[ OK ] Compiling ambition --release",
+  "[ OK ] Starting render engine",
+  "[ OK ] Calibrating curiosity sensors",
+  "[ OK ] Welcome, " + CONFIG.name
+];
+
+function runBootSequence(){
+  document.getElementById("boot-name").textContent = CONFIG.name.toUpperCase();
+  document.title = CONFIG.name + " — Portfolio OS";
+  const logEl = document.getElementById("boot-log");
+  const barEl = document.getElementById("boot-bar");
+  const pctEl = document.getElementById("boot-pct");
+  logEl.innerHTML = "";
+  barEl.style.width = "0%";
+  pctEl.textContent = "0%";
+
+  const totalDuration = 2600;
+  const stepDelay = totalDuration / BOOT_LINES.length;
+
+  BOOT_LINES.forEach((line, i) => {
+    setTimeout(() => {
+      const div = document.createElement("div");
+      div.innerHTML = '<span class="ok">[ OK ]</span>' + line.replace("[ OK ] ", "");
+      logEl.appendChild(div);
+      while (logEl.children.length > 5) logEl.removeChild(logEl.firstChild);
+      const pct = Math.round(((i + 1) / BOOT_LINES.length) * 100);
+      barEl.style.width = pct + "%";
+      pctEl.textContent = pct + "%";
+    }, i * stepDelay);
+  });
+
+  setTimeout(() => { try{ sfx.boot(); }catch(e){} }, 80);
+
+  setTimeout(() => {
+    const boot = document.getElementById("boot-screen");
+    boot.classList.add("fade-out");
+    setTimeout(() => {
+      boot.style.display = "none";
+      const desktop = document.getElementById("desktop");
+      desktop.classList.add("visible");
+      buildIcons();
+      restartClock();
+    }, 620);
+  }, totalDuration + 350);
+}
+
+/* ============================================================
+   DESKTOP ICONS
+   ============================================================ */
+function buildIcons(){
+  const wrap = document.getElementById("icons");
+  wrap.innerHTML = "";
+  ICONS.forEach((ic, i) => {
+    const btn = document.createElement("button");
+    btn.className = "icon-btn";
+    btn.style.animationDelay = (i * 0.08) + "s";
+    btn.setAttribute("aria-label", "Open " + ic.label);
+    btn.innerHTML =
+      '<span class="folder-shape" style="--c:' + ic.color + '">' +
+        '<span class="folder-glyph">' + ic.glyph + '</span>' +
+      '</span>' +
+      '<span class="icon-label">' + ic.label + '</span>';
+    btn.addEventListener("click", () => { try{ sfx.click(); }catch(e){} openWindow(ic.id); });
+    wrap.appendChild(btn);
+  });
+}
+
+/* ============================================================
+   WINDOW MANAGER
+   ============================================================ */
+const openWindows = {}; // id -> {el, trayEl, maximized, prevRect}
+let zCounter = 20;
+let cascadeIndex = 0;
+
+const WINDOW_DEFS = {
+  about:          { title:"About Me",       glyph:"AB", color:"var(--amber)",    w:680, h:420, render:renderAbout },
+  education:      { title:"Education",      glyph:"ED", color:"var(--mint)",     w:640, h:380, render:renderEducation },
+  experience:     { title:"Experience",     glyph:"XP", color:"var(--sky)",      w:720, h:480, render:renderExperience },
+  skills:         { title:"My Skills",      glyph:"<>", color:"var(--lavender)", w:680, h:480, render:renderSkills },
+  projects:       { title:"My Projects",    glyph:"▣",  color:"var(--sky)",      w:760, h:520, render:renderProjects },
+  certifications: { title:"Certifications", glyph:"CR", color:"var(--amber)",    w:640, h:380, render:renderCertifications },
+  contact:        { title:"Contact Me",     glyph:"@",  color:"var(--coral)",    w:680, h:460, render:renderContact }
+};
+
+function openWindow(id){
+  if (openWindows[id]) {
+    const w = openWindows[id];
+    if (w.el.classList.contains("minimized")) restoreWindow(id);
+    focusWindow(id);
+    return;
+  }
+  const def = WINDOW_DEFS[id];
+  const el = document.createElement("section");
+  el.className = "window opening";
+  el.setAttribute("role","dialog");
+  el.setAttribute("aria-label", def.title);
+
+  const isMobile = window.innerWidth <= 760;
+  const w = Math.min(def.w, window.innerWidth - 24);
+  const h = Math.min(def.h, window.innerHeight - 140);
+  if (!isMobile){
+    const offset = (cascadeIndex % 5) * 28;
+    el.style.width = w + "px";
+    el.style.height = h + "px";
+    el.style.left = (60 + offset) + "px";
+    el.style.top = (40 + offset) + "px";
+  }
+  cascadeIndex++;
+
+  el.innerHTML =
+    '<div class="win-titlebar" data-handle>' +
+      '<span class="win-icon-chip" style="background:color-mix(in srgb, ' + def.color + ' 22%, transparent);color:' + def.color + '">' + def.glyph + '</span>' +
+      '<span class="win-title">' + def.title + '</span>' +
+      '<div class="win-controls">' +
+        '<button class="win-btn min-btn" aria-label="Minimize">–</button>' +
+        '<button class="win-btn max-btn" aria-label="Maximize">▢</button>' +
+        '<button class="win-btn close-btn" aria-label="Close">×</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="win-body">' + def.render() + '</div>';
+
+  document.getElementById("windows-layer").appendChild(el);
+  openWindows[id] = { el, maximized:false, prevRect:null };
+
+  el.querySelector(".min-btn").addEventListener("click", () => minimizeWindow(id));
+  el.querySelector(".max-btn").addEventListener("click", () => toggleMaximize(id));
+  el.querySelector(".close-btn").addEventListener("click", () => closeWindow(id));
+  el.addEventListener("pointerdown", () => focusWindow(id));
+  makeDraggable(el, el.querySelector("[data-handle]"), id);
+
+  addTrayItem(id, def);
+  focusWindow(id);
+  try{ sfx.open(); }catch(e){}
+
+  if (id === "skills") setTimeout(() => animateSkillBars(el), 80);
+  if (id === "contact") wireContactForm(el);
+
+  setTimeout(() => el.classList.remove("opening"), 320);
+}
+
+function focusWindow(id){
+  Object.keys(openWindows).forEach(k => {
+    openWindows[k].el.classList.toggle("active", k === id);
+    const tray = document.getElementById("tray-" + k);
+    if (tray) tray.classList.toggle("active", k === id);
+  });
+  const w = openWindows[id];
+  if (w){ zCounter++; w.el.style.zIndex = zCounter; }
+}
+
+function minimizeWindow(id){
+  const w = openWindows[id];
+  if (!w) return;
+  w.el.classList.add("minimized");
+  const tray = document.getElementById("tray-" + id);
+  if (tray) tray.classList.remove("active");
+}
+
+function restoreWindow(id){
+  const w = openWindows[id];
+  if (!w) return;
+  w.el.classList.remove("minimized");
+  focusWindow(id);
+}
+
+function toggleMaximize(id){
+  const w = openWindows[id];
+  if (!w) return;
+  if (!w.maximized){
+    w.prevRect = { left: w.el.style.left, top: w.el.style.top, width: w.el.style.width, height: w.el.style.height };
+    w.el.classList.add("maximized");
+    w.maximized = true;
+  } else {
+    w.el.classList.remove("maximized");
+    if (w.prevRect){
+      w.el.style.left = w.prevRect.left;
+      w.el.style.top = w.prevRect.top;
+      w.el.style.width = w.prevRect.width;
+      w.el.style.height = w.prevRect.height;
+    }
+    w.maximized = false;
+  }
+  focusWindow(id);
+}
+
+function closeWindow(id){
+  const w = openWindows[id];
+  if (!w) return;
+  w.el.classList.add("closing");
+  try{ sfx.close(); }catch(e){}
+  setTimeout(() => {
+    w.el.remove();
+    const tray = document.getElementById("tray-" + id);
+    if (tray) tray.remove();
+    delete openWindows[id];
+  }, 190);
+}
+
+function addTrayItem(id, def){
+  const tray = document.getElementById("tray");
+  const item = document.createElement("button");
+  item.className = "tray-item";
+  item.id = "tray-" + id;
+  item.innerHTML = '<span style="color:' + def.color + '">' + def.glyph + '</span><span class="label">' + def.title + '</span><span class="tray-close" aria-label="Close">×</span>';
+  
+  item.addEventListener("click", () => {
+    const w = openWindows[id];
+    if (!w) return;
+    if (w.el.classList.contains("minimized")) { restoreWindow(id); return; }
+    focusWindow(id);
+  });
+
+  const closeBtn = item.querySelector(".tray-close");
+  closeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    try { sfx.click(); } catch(err) {}
+    closeWindow(id);
+  });
+
+  tray.appendChild(item);
+}
+
+/* ----- Dragging (Pointer Events: mouse + touch) ----- */
+function makeDraggable(el, handle, id){
+  let dragging = false, startX, startY, startLeft, startTop;
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".win-btn")) return;
+    if (window.innerWidth <= 760) return;
+    if (el.classList.contains("maximized")) return;
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    const rect = el.getBoundingClientRect();
+    startLeft = rect.left; startTop = rect.top;
+    focusWindow(id);
+    try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  handle.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    let newTop = startTop + dy;
+    if (newTop < 0) newTop = 0;
+    el.style.left = (startLeft + dx) + "px";
+    el.style.top = newTop + "px";
+  });
+  ["pointerup","pointercancel"].forEach(evt => handle.addEventListener(evt, () => { dragging = false; }));
+}
+
+/* ============================================================
+   WINDOW CONTENT RENDERERS
+   ============================================================ */
+function renderAbout(){
+  return (
+    '<div class="win-section about-grid">' +
+      '<div class="avatar-wrap">' +
+        '<div class="avatar-ring"><div class="avatar"><img src="pfp.jpg" alt="' + CONFIG.name + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'' + CONFIG.initials + '\'" /></div></div>' +
+        '<div class="avatar-caption">' + CONFIG.role + '</div>' +
+      '</div>' +
+      '<div class="about-text">' +
+        '<h3>Hey, I\'m ' + CONFIG.fullName + ' <span class="wave">👋</span></h3>' +
+        '<p>' + CONFIG.intro + '</p>' +
+        '<h4>My Story</h4><p>' + CONFIG.story + '</p>' +
+        '<h4>Where I\'m Headed</h4><p>' + CONFIG.goals + '</p>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderEducation(){
+  return (
+    '<div class="win-section">' +
+      '<h3>Education</h3>' +
+      '<div style="border-left:2px solid var(--amber);padding-left:16px;margin:16px 0;">' +
+        '<h4 style="margin:0 0 4px;font-size:1rem;color:var(--text);">B.Tech Computer Science Engineering (CSE)</h4>' +
+        '<div style="font-size:.85rem;color:var(--amber);font-family:var(--font-display);margin-bottom:6px;">2023 – 2027</div>' +
+        '<p style="margin:0;font-size:.9rem;color:var(--text-dim);">Kanpur Institute of Technology, Kanpur, Uttar Pradesh</p>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderExperience(){
+  return (
+    '<div class="win-section">' +
+      '<h3>Professional Experience</h3>' +
+      '<div style="margin:16px 0;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;">' +
+          '<h4 style="margin:0;font-size:1rem;color:var(--text);">Full Stack Developer (Self-Initiated Projects)</h4>' +
+          '<span style="font-size:.78rem;color:var(--sky);font-family:var(--font-display);">2025 – Present</span>' +
+        '</div>' +
+        '<div style="font-size:.84rem;color:var(--text-dim);margin:4px 0 12px;">B.Tech Final Year Student, Kanpur Institute of Technology</div>' +
+        '<ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:.88rem;color:var(--text-dim);line-height:1.5;">' +
+          '<li>Built and deployed multiple full-stack web applications independently, applying MERN stack and Flask/Python backends.</li>' +
+          '<li>Practiced Data Structures & Algorithms regularly in C++ on competitive programming platforms to strengthen problem-solving.</li>' +
+          '<li>Maintained all projects using Git and GitHub, following structured version control practices including branching and commit documentation.</li>' +
+          '<li>Continuously learning new technologies by building real projects, reading documentation, and completing industry certifications.</li>' +
+        '</ul>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderCertifications(){
+  return (
+    '<div class="win-section">' +
+      '<h3>Awards & Certifications</h3>' +
+      '<ul style="list-style-type:none;padding:0;margin:16px 0;display:flex;flex-direction:column;gap:14px;">' +
+        '<li style="display:flex;align-items:start;gap:10px;">' +
+          '<span style="color:var(--lavender);font-size:1.1rem;">🏆</span>' +
+          '<div>' +
+            '<div style="font-weight:600;font-size:.92rem;">MERN Stack Web Development</div>' +
+            '<div style="font-size:.78rem;color:var(--text-dim);">Udemy (2025)</div>' +
+          '</div>' +
+        '</li>' +
+        '<li style="display:flex;align-items:start;gap:10px;">' +
+          '<span style="color:var(--lavender);font-size:1.1rem;">🏆</span>' +
+          '<div>' +
+            '<div style="font-weight:600;font-size:.92rem;">EA Sports Game Development Program</div>' +
+            '<div style="font-size:.78rem;color:var(--text-dim);">Electronic Arts / Forage (2026)</div>' +
+          '</div>' +
+        '</li>' +
+      '</ul>' +
+    '</div>'
+  );
+}
+
+function renderSkills(){
+  let html = '<div class="win-section"><div class="skill-cats">';
+  Object.keys(SKILLS).forEach(cat => {
+    const data = SKILLS[cat];
+    html += '<div class="skill-cat">' +
+      '<div class="skill-cat-title"><span class="skill-cat-dot" style="background:' + data.color + '"></span>' + cat + '</div>';
+    data.items.forEach(([name, pct]) => {
+      html += '<div class="skill-row">' +
+        '<div class="skill-row-top"><span>' + name + '</span><span>' + pct + '%</span></div>' +
+        '<div class="skill-bar-track"><div class="skill-bar-fill" data-target="' + pct + '" style="background:' + data.color + '"></div></div>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+function animateSkillBars(windowEl){
+  const bars = windowEl.querySelectorAll(".skill-bar-fill");
+  bars.forEach(bar => { requestAnimationFrame(() => { bar.style.width = bar.dataset.target + "%"; }); });
+}
+
+function renderHobbies(){
+  let html = '<div class="win-section"><h3>What I do for fun</h3><p>A few things outside the code editor.</p><div class="hobby-grid">';
+  HOBBIES.forEach(h => {
+    html += '<div class="hobby-card"><span class="hobby-icon">' + h.icon + '</span><h5>' + h.title + '</h5><p>' + h.desc + '</p></div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function renderProjects(){
+  let html = '<div class="win-section"><h3>Things I\'ve built</h3><p>A few projects worth a closer look.</p><div class="project-grid">';
+  PROJECTS.forEach(p => {
+    let thumbHtml = '';
+    if (p.image) {
+      thumbHtml = '<img src="' + p.image + '" alt="' + p.name + '" style="width:100%;height:100%;object-fit:cover;" />';
+    } else {
+      thumbHtml = p.icon;
+    }
+    html += '<div class="project-card">' +
+      '<div class="project-thumb" style="--p1:' + (p.p1 || '#14131f') + ';--p2:' + (p.p2 || '#1d1b2a') + '">' + thumbHtml + '</div>' +
+      '<div class="project-info">' +
+        '<h5>' + p.name + '</h5>' +
+        '<p>' + p.desc + '</p>' +
+        '<div class="tech-tags">' + p.tech.map(t => '<span class="tech-tag">' + t + '</span>').join("") + '</div>' +
+        '<div class="project-links">' +
+          '<a class="project-link" href="' + p.github + '" target="_blank" rel="noopener">GitHub</a>' +
+          '<a class="project-link demo" href="' + p.demo + '" target="_blank" rel="noopener">Live Demo</a>' +
+        '</div>' +
+      '</div>' +
+      '</div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function renderContact(){
+  return (
+    '<div class="win-section"><div class="contact-wrap">' +
+      '<form class="contact-form" data-contact-form>' +
+        '<div class="field"><label for="cf-name">Name</label><input id="cf-name" type="text" required placeholder="Your name" /></div>' +
+        '<div class="field"><label for="cf-email">Email</label><input id="cf-email" type="email" required placeholder="you@example.com" /></div>' +
+        '<div class="field"><label for="cf-msg">Message</label><textarea id="cf-msg" rows="4" required placeholder="Say hello..."></textarea></div>' +
+        '<button type="submit" class="submit-btn">Send Message</button>' +
+      '</form>' +
+      '<div class="contact-side">' +
+        '<div><h4 style="margin:0 0 8px;color:var(--coral);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;">Reach me</h4>' +
+        '<div class="contact-email">' + CONFIG.email + '</div>' +
+        '<div class="contact-email" style="margin-top:4px;">' + CONFIG.phone + '</div></div>' +
+        '<div><h4 style="margin:0 0 8px;color:var(--coral);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;">Elsewhere</h4>' +
+        '<div class="social-row">' +
+          '<a class="social-btn" href="' + CONFIG.socials.linkedin + '" target="_blank" rel="noopener" aria-label="LinkedIn">in</a>' +
+          '<a class="social-btn" href="' + CONFIG.socials.github + '" target="_blank" rel="noopener" aria-label="GitHub">gh</a>' +
+          '<a class="social-btn" href="mailto:' + CONFIG.email + '" aria-label="Email">@</a>' +
+        '</div></div>' +
+      '</div>' +
+    '</div></div>'
+  );
+}
+function wireContactForm(windowEl){
+  const form = windowEl.querySelector("[data-contact-form]");
+  if (!form) return;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    // NOTE: This is a front-end demo form. Wire it up to a real service
+    // (e.g. Formspree, EmailJS, or your own backend) to actually receive messages.
+    const wrap = form.parentElement;
+    form.style.display = "none";
+    const success = document.createElement("div");
+    success.className = "success-panel";
+    success.innerHTML = '<div class="success-check">✓</div><h5 style="margin:0;">Message sent!</h5><p style="color:var(--text-dim);font-size:.82rem;margin:0;">Thanks for reaching out — I\'ll get back to you soon.</p>';
+    wrap.insertBefore(success, form);
+  });
+}
+
+/* ============================================================
+   TASKBAR: clock, theme, wallpaper, sound, power
+   ============================================================ */
+let clockInterval = null;
+function restartClock(){
+  if (clockInterval) clearInterval(clockInterval);
+  function tick(){
+    const now = new Date();
+    document.getElementById("clock-time").textContent =
+      now.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+    document.getElementById("clock-date").textContent =
+      now.toLocaleDateString([], { weekday:"short", month:"short", day:"numeric" });
+  }
+  tick();
+  clockInterval = setInterval(tick, 1000 * 30);
+}
+
+document.getElementById("theme-toggle").addEventListener("click", (e) => {
+  const html = document.documentElement;
+  const isLight = html.getAttribute("data-theme") === "light";
+  html.setAttribute("data-theme", isLight ? "dark" : "light");
+  e.currentTarget.textContent = isLight ? "🌙" : "☀️";
+  try{ sfx.click(); }catch(err){}
+});
+
+document.getElementById("sound-toggle").addEventListener("click", (e) => {
+  soundOn = !soundOn;
+  e.currentTarget.textContent = soundOn ? "🔊" : "🔇";
+  if (soundOn) { try{ sfx.click(); }catch(err){} }
+});
+
+const wpPicker = document.getElementById("wallpaper-picker");
+document.getElementById("wallpaper-btn").addEventListener("click", () => {
+  wpPicker.classList.toggle("hidden");
+});
+wpPicker.querySelectorAll(".wp-swatch").forEach(sw => {
+  sw.addEventListener("click", () => {
+    const target = sw.dataset.wp;
+    const wallpaperEl = document.getElementById("wallpaper");
+    wallpaperEl.className = target;
+    wpPicker.querySelectorAll(".wp-swatch").forEach(s => s.classList.remove("selected"));
+    sw.classList.add("selected");
+    try{ sfx.click(); }catch(err){}
+  });
+});
+document.addEventListener("click", (e) => {
+  if (!wpPicker.contains(e.target) && e.target.id !== "wallpaper-btn"){
+    wpPicker.classList.add("hidden");
+  }
+});
+
+/* ----- Power / Shutdown flow ----- */
+const shutdownBackdrop = document.getElementById("shutdown-modal-backdrop");
+document.getElementById("power-btn").addEventListener("click", () => {
+  shutdownBackdrop.classList.add("show");
+});
+document.getElementById("cancel-shutdown").addEventListener("click", () => {
+  shutdownBackdrop.classList.remove("show");
+});
+document.getElementById("confirm-shutdown").addEventListener("click", () => {
+  shutdownBackdrop.classList.remove("show");
+  doShutdown();
+});
+shutdownBackdrop.addEventListener("click", (e) => {
+  if (e.target === shutdownBackdrop) shutdownBackdrop.classList.remove("show");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && shutdownBackdrop.classList.contains("show")) {
+    shutdownBackdrop.classList.remove("show");
+  }
+});
+
+function doShutdown(){
+  try{ sfx.shutdown(); }catch(e){}
+  const desktop = document.getElementById("desktop");
+  desktop.classList.add("shutting-down");
+  if (clockInterval) clearInterval(clockInterval);
+  setTimeout(() => {
+    desktop.style.display = "none";
+    const ty = document.getElementById("thankyou-screen");
+    ty.classList.add("show");
+  }, 560);
+}
+
+document.getElementById("restart-btn").addEventListener("click", () => {
+  window.location.reload();
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+runBootSequence();
+</script>
+</body>
+</html>
